@@ -28,7 +28,7 @@ void dfs(int v){
         if (estado[u] == NO_LO_VI){
             treeEdges[u] = v;
             dfs(u);
-        }else{
+        }else if(estado[u]!=NO_LO_VI && treeEdges[v]!=u){
             bool combino = false;
             set<int> aux;
             int x = u;
@@ -81,6 +81,7 @@ int combinatorio(int n, int k){
 double juegoParaDos(int n){
     treeEdges.resize(n);
     treeEdges[0] = 0;
+    estado.resize(n,NO_LO_VI);
     niveles.resize(n,-1);
     niveles[0] = 1;
     dfs(0);
@@ -90,10 +91,12 @@ double juegoParaDos(int n){
     }
     int res = 0;
     for(int i=0; i<sizes.size();i++){
-        printf("%d", combinatorio(sizes[i],2));
+        printf("%d\n", sizes[i]);
         res += combinatorio(sizes[i],2);
     }
-    return res/combinatorio(n,2);
+    float x = (float)res/(float)combinatorio(n,2);
+    
+    return x;
 }
 
 
@@ -107,6 +110,6 @@ int main(int argc, const char* argv[]){
         G[w-1].push_back(v-1);
     }
     estado.resize(n);
-    printf("%.4f", juegoParaDos(n));
+    printf("%.5f", juegoParaDos(n));
 
 }
