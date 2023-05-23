@@ -6,22 +6,20 @@
 
 using namespace std;
 
-enum { NO_LO_VI = 0, EMPECE_A_VER = 1, TERMINE_DE_VER = 2 };
+enum { WHITE = 0, GREY = 1, BLACK = 2 };
 
 int N, R, W, U, V;
 vector<tuple<int, int, int>> listOfEdges;
 vector<tuple<int, int>> offices;
-list<tuple<int, int, int>> treeEdges;
-vector<bool> hasModem;
 vector<vector<tuple<int, int>>> edges;
 vector<int> status;
 float count_U, count_V;
 
 void dfs(int v){
-    status[v] = EMPECE_A_VER;
+    status[v] = GREY;
 
     for (tuple<int, int> u : edges[v]){
-        if(status[get<0>(u)] == NO_LO_VI){
+        if(status[get<0>(u)] == WHITE){
             if(get<1>(u) <= R)
                 count_U += U*get<1>(u);
             else
@@ -30,7 +28,7 @@ void dfs(int v){
             dfs(get<0>(u));
         }
     }
-    status[v] = TERMINE_DE_VER;
+    status[v] = BLACK;
 }
 
 struct DSU{
@@ -64,34 +62,68 @@ int weight(int i, int j){
 void buildEdges(){
     for (int i = 0; i < offices.size(); i++){
         for (int j = 0; j < offices.size(); j++){
-            if(i != j) 
-                listOfEdges.push_back(make_tuple(weight(i, j), i, j));
+            if(i != j) listOfEdges.push_back(make_tuple(weight(i, j), i, j));
         }
     }
 }
 
-void sortEdges(){
-    for (int i = 0; i < listOfEdges.size(); i++){
-        int min = i;
-        for (int j = i + 1; j < listOfEdges.size(); j++){
-            if(get<0>(listOfEdges[j]) < get<0>(listOfEdges[i]))
-                min = j;
+void merge(int inicio, int mid, int fin){
+    vector<tuple<int, int, int>> left, right;
+
+    right = vector<tuple<int, int, int>>(mid - inicio + 1);
+    left = vector<tuple<int, int, int>>(fin - mid);
+
+    for(int k = 0; k < left.size(); k++)
+        left[k] = listOfEdges[inicio + k];
+
+    for(int k = 0; k < right.size(); k++)
+        right[k] = listOfEdges[mid + 1 + k];
+
+    int indexLeft = 0, indexRight = 0, indexInicio = inicio;
+    while(indexLeft < fin - mid && indexRight < mid - inicio + 1){
+        if(get<0>(left[indexLeft]) < get<0>(right[indexRight])){
+            listOfEdges[indexInicio] = left[indexLeft];
+            indexLeft++;
+        } else {
+            listOfEdges[indexInicio] = right[indexRight];
+            indexRight++;
         }
-        tuple<int, int, int> aux = listOfEdges[i];
-        listOfEdges[i] = listOfEdges[min];
-        listOfEdges[min] = aux;
+        indexInicio++;
+    }
+
+    while(indexLeft < fin - mid){
+        listOfEdges[indexInicio] = left[indexLeft];
+        indexLeft++;
+        indexInicio++;
+    }
+
+    while(indexRight < mid - inicio + 1){
+        listOfEdges[indexInicio] = right[indexRight];
+        indexRight++;
+        indexInicio++;
     }
 }
 
-void kruskal(int n){
-    DSU dsu(n);
-    treeEdges = list<tuple<int, int, int>>();
+void mergeSort(int inicio, int fin){
+    if(inicio >= fin)
+        return;
+    
+    int mid = inicio + (fin - inicio)/2;
+    mergeSort(inicio, mid);
+    mergeSort(mid + 1, fin);
+    merge(inicio, mid, fin);
+}
+
+void kruskal(){
+    DSU dsu(N);
+    
     for(tuple<int, int, int> e : listOfEdges){
-        //si (u,v) es arista segura
+        if(N == W) return;
         if(dsu.find(get<1>(e)) != dsu.find(get<2>(e))){
-            // agregar
             dsu.unite(get<1>(e), get<2>(e));
-            treeEdges.push_back(make_tuple(get<1>(e), get<2>(e), get<0>(e)));
+            edges[get<1>(e)].push_back(make_tuple(get<2>(e), get<0>(e)));
+            edges[get<2>(e)].push_back(make_tuple(get<1>(e), get<0>(e)));
+            N--;
         }
     }
 }
@@ -105,48 +137,23 @@ int main(int argc, char const *argv[]){
         cin >> N >> R >> W >> U >> V;
 
         offices = vector<tuple<int, int>>(N);
-        hasModem = vector<bool>(N, false);
+        status = vector<int>(N, WHITE);
         listOfEdges = vector<tuple<int, int, int>>();
-        edges = vector<vector<tuple<int, int>>>(N + 1);
+        edges = vector<vector<tuple<int, int>>>(N);
         count_U = count_V = 0;
         for (int i = 0; i < N; i++){
             cin >> office_x >> office_y;
             offices[i] = make_tuple(office_x, office_y);
         }
 
-        buildEdges();
-
-        sortEdges();
+        buildEdges(); 
+        mergeSort(0, listOfEdges.size() - 1); 
+        kruskal();
         
-        kruskal(N);
-
-        for (auto it = treeEdges.rbegin(); it != treeEdges.rend() && W > 0; ++it){
-            int u = get<0>(*it);
-            int v = get<1>(*it);
-            int weight = get<2>(*it);
-
-            if(!hasModem[u]){ 
-                hasModem[u] = true; 
-                W--; 
-                edges[N].push_back(make_tuple(u, 0)); 
-            }
-
-            if(W > 0 && !hasModem[v]) { 
-                hasModem[v] = true; 
-                W--; 
-                treeEdges.pop_back(); 
-                edges[N].push_back(make_tuple(v, 0));
-            }
-        }
-
-        status = vector<int>(N + 1, NO_LO_VI);
-        for (tuple<int, int, int> e : treeEdges){
-            edges[get<0>(e)].push_back(make_tuple(get<1>(e), get<2>(e)));
-            edges[get<1>(e)].push_back(make_tuple(get<0>(e), get<2>(e)));
-        }
+        for(int v = 0; v < offices.size(); v++)
+            if (status[v] == WHITE)
+                dfs(v);
         
-        dfs(N);
-
         k++;
         
         printf("Caso #%d: %0.3f %0.3f\n", k, count_U, count_V);
