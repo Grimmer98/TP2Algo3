@@ -1,77 +1,24 @@
 #include <iostream>
+#include <bits/stdc++.h>
 #include <vector>
 #include <tuple>
 #include <list>
 #include <iomanip>
+#include <math.h>
 
 using namespace std;
 
-enum { WHITE = 0, GREY = 1, BLACK = 2 };
-
 int N, R, W, U, V;
-vector<tuple<int, int, int>> listOfEdges;
+vector<tuple<double, int, int>> listOfEdges;
+list<double> treeEdges;
 vector<tuple<int, int>> offices;
-vector<vector<tuple<int, int>>> edges;
-vector<int> status;
-float count_U, count_V;
-
-void dfs(int v){
-    status[v] = GREY;
-
-    for (tuple<int, int> u : edges[v]){
-        if(status[get<0>(u)] == WHITE){
-            if(get<1>(u) <= R)
-                count_U += U*get<1>(u);
-            else
-                count_V += V*get<1>(u);
-
-            dfs(get<0>(u));
-        }
-    }
-    status[v] = BLACK;
-}
-
-struct DSU{
-    DSU(int n){
-        padre = rank = vector<int>(n);
-        for(int v = 0; v < n; v++) padre[v] = v;
-    }
-
-    int find(int v){
-        if(v == padre[v]) return v;
-        return padre[v] = find(padre[v]);
-    }
-
-    void unite(int u, int v){
-        u = find(u), v = find(v);
-        if(u == v) return;
-        if(rank[u] < rank[v]) swap(u, v);
-        padre[v] = padre[u];
-        rank[u] = max(rank[u],rank[v]+1);
-    }
-
-    vector<int> padre;
-    vector<int> rank;
-};
-
-int weight(int i, int j){
-    return  abs(get<0>(offices[i]) - get<0>(offices[j])) +
-            abs(get<1>(offices[i]) - get<1>(offices[j]));
-}
-
-void buildEdges(){
-    for (int i = 0; i < offices.size(); i++){
-        for (int j = 0; j < offices.size(); j++){
-            if(i != j) listOfEdges.push_back(make_tuple(weight(i, j), i, j));
-        }
-    }
-}
+double count_U, count_V;
 
 void merge(int inicio, int mid, int fin){
-    vector<tuple<int, int, int>> left, right;
+    vector<tuple<double, int, int>> left, right;
 
-    right = vector<tuple<int, int, int>>(mid - inicio + 1);
-    left = vector<tuple<int, int, int>>(fin - mid);
+    right = vector<tuple<double, int, int>>(mid - inicio + 1);
+    left = vector<tuple<double, int, int>>(fin - mid);
 
     for(int k = 0; k < left.size(); k++)
         left[k] = listOfEdges[inicio + k];
@@ -114,15 +61,51 @@ void mergeSort(int inicio, int fin){
     merge(inicio, mid, fin);
 }
 
+double weight(int i, int j){
+    double a = get<0>(offices[i]) - get<0>(offices[j]);
+    double b = get<1>(offices[i]) - get<1>(offices[j]);
+    return sqrt(a*a + b*b);
+}
+
+void buildEdges(){
+    for (int i = 0; i < offices.size(); i++){
+        for (int j = i + 1; j < offices.size(); j++){
+            listOfEdges.push_back(make_tuple(weight(i, j), i, j));
+        }
+    }
+}
+
+struct DSU{
+    DSU(int n){
+        padre = rank = vector<int>(n);
+        for(int v = 0; v < n; v++) padre[v] = v;
+    }
+
+    int find(int v){
+        if(v == padre[v]) return v;
+        return padre[v] = find(padre[v]);
+    }
+
+    void unite(int u, int v){
+        u = find(u), v = find(v);
+        if(u == v) return;
+        if(rank[u] < rank[v]) swap(u, v);
+        padre[v] = padre[u];
+        rank[u] = max(rank[u],rank[v]+1);
+    }
+
+    vector<int> padre;
+    vector<int> rank;
+};
+
 void kruskal(){
     DSU dsu(N);
     
-    for(tuple<int, int, int> e : listOfEdges){
+    for(tuple<double, int, int> e : listOfEdges){
         if(N == W) return;
         if(dsu.find(get<1>(e)) != dsu.find(get<2>(e))){
             dsu.unite(get<1>(e), get<2>(e));
-            edges[get<1>(e)].push_back(make_tuple(get<2>(e), get<0>(e)));
-            edges[get<2>(e)].push_back(make_tuple(get<1>(e), get<0>(e)));
+            treeEdges.push_back(get<0>(e));
             N--;
         }
     }
@@ -137,23 +120,23 @@ int main(int argc, char const *argv[]){
         cin >> N >> R >> W >> U >> V;
 
         offices = vector<tuple<int, int>>(N);
-        status = vector<int>(N, WHITE);
-        listOfEdges = vector<tuple<int, int, int>>();
-        edges = vector<vector<tuple<int, int>>>(N);
+        listOfEdges = vector<tuple<double, int, int>>();
+        treeEdges = {};
         count_U = count_V = 0;
         for (int i = 0; i < N; i++){
             cin >> office_x >> office_y;
             offices[i] = make_tuple(office_x, office_y);
         }
 
-        buildEdges(); 
-        mergeSort(0, listOfEdges.size() - 1); 
+        buildEdges();
+        sort(listOfEdges.begin(), listOfEdges.end());
         kruskal();
         
-        for(int v = 0; v < offices.size(); v++)
-            if (status[v] == WHITE)
-                dfs(v);
-        
+        for(double w : treeEdges){
+            if(w <= R) count_U += (double)U * w;
+            else count_V += (double)V * w;
+        }
+
         k++;
         
         printf("Caso #%d: %0.3f %0.3f\n", k, count_U, count_V);
