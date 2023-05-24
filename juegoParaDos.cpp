@@ -1,117 +1,103 @@
-#include <stdio.h>
 #include <vector>
-#include <tuple>
+#include <stdio.h>
+#include <algorithm>
 
 using namespace std;
-typedef vector<vector<tuple<int,int>>> grafo;
+typedef vector<vector<long long int>> grafo;
 
-enum { NO_LO_VI = 0, EMPECE_A_VER =1, TERMINE_DE_VER = 2 };
+enum { NO_LO_VI = 0, EMPECE_A_VER = 1, TERMINE_DE_VER = 2 };
 
 grafo G;
-vector<vector<int>> treeEdges;
-vector<int> parents;
-vector<int> status;
-vector<int> status_count;
-vector<vector<int>> A;
-int count =0;
+vector<bool> visited, visited_count;
+vector<int> bridges;
+vector<vector<double>> A;
+vector<int> tin;
+vector<int> low;
+long long int counter = 1;
+int timer;
 
-void dfs_bridges(int v, int father,vector<int> &up,vector<int> &down){
-    status[v] = EMPECE_A_VER;
-    for (auto u : (G[v])){
-        if (status[get<0>(u)] == NO_LO_VI){
-            parents[get<0>(u)] = v;
-            treeEdges[v].push_back(get<0>(u));
-            dfs_bridges(get<0>(u),v,up,down);
-        }else if (get<0>(u)!=father && get<0>(u)>v){//nodo gris o negro
-            up[v]++; down[get<0>(u)]++;
+void dfs_bridges(long long int v, long long int father=-1){
+    visited[v] = true;
+    tin[v] = low[v] = timer++;
+    for (int to : G[v]) {
+        if (to == father) continue;
+        if (visited[to]) {
+            low[v] = min(low[v], tin[to]);
+        } else {
+            dfs_bridges(to, v);
+            low[v] = min(low[v], low[to]);
+            if (low[to] > tin[v])
+                bridges[to] = 0;
         }
     }
-    status[v] = TERMINE_DE_VER;
 }
 
-int cover(int v, int father,vector<int> &up,vector<int> &down, vector<int>& bridges){
-    if(bridges[v]!=-1) return bridges[v];
-    int res=0;
-    res += up[v];
-    res -= down[v];
-    for(int child : treeEdges[v]){
-        if(child!=father) res+= cover(child,v,up,down,bridges);
+void find_bridges(int n) {
+    timer = 0;
+    visited.assign(n, false);
+    tin.assign(n, -1);
+    low.assign(n, -1);
+    for (int i = 0; i < n; i++) {
+        if (!visited[i])
+            dfs_bridges(i);
     }
-    bridges[v] = res;
-    return res;
 }
 
-void dfs_count(int v){
-    status_count[v] = EMPECE_A_VER;
+void dfs_count(long long int v){
+    visited_count[v] = true;
     for(auto u : G[v]){
-        if(status_count[get<0>(u)]== NO_LO_VI && get<1>(u)==0){
-            count++;
-            dfs_count(get<0>(u));
+        if(!visited_count[u] && bridges[u]!=0){
+            counter++;
+            dfs_count(u);
         }
     }
-    status_count[v] = TERMINE_DE_VER;
 }
 
-int combinatorio(int n, int k){
-    for (int i = 0; i <= n; i++){A[i][0] = 1;}
-    for (int i = 0; i <= k; i++){A[i][i] = 1;}
-    for (int i = 1; i <= n; i++){
-        for (int j = 1; j <= min(i, k); j++){
-            A[i][j] = A[i-1][j] + A[i-1][j-1];
-        }
-    }
-    return A[n][k];
+double combinatorio(long long int n, int k){
+    if(k==0) return 1;
+    if(n==k) return 1;
+    if(A[n-1][k]==0){A[n-1][k]=combinatorio(n-1,k);}
+    if(A[n-1][k-1]==0){A[n-1][k-1]=combinatorio(n-1,k-1);}
+    return A[n-1][k]+A[n-1][k-1];
 }
 
+double juegoParaDos(long long int n){
+    visited.resize(n, false);
+    visited_count.resize(n, false);
 
-double juegoParaDos(int n,vector<int> &up,vector<int> &down, vector<int>& bridges){
-    treeEdges.resize(n,vector<int>());
-    status.resize(n,NO_LO_VI);
-    parents.resize(n,0);
-    status_count.resize(n,NO_LO_VI);
-    // si bridges[i]==0, entonces el la arista del nodo i con su padre
-    // es un puente.
-    vector<int> roots;
-    for(int i=0; i<n;i++){
-        if(status[i]==NO_LO_VI){roots.push_back(i);dfs_bridges(i,-1,up,down);}
-    }
-    for(int i=0;i<roots.size();i++){cover(roots[i],-1,up,down,bridges);}
-    for(int i=1;i<n;i++){
-        if(bridges[i]==0){
-            get<1>(G[i][parents[i]]) = 1;
-            get<1>(G[parents[i]][i]) = 1;
-        }
-    }
-    vector<int> sizeCC;
-    for(int i=0; i<n; i++){
-        if(status_count[i]==NO_LO_VI){
+    find_bridges(n);
+        
+    vector<long long int> sizeCC;
+    for(int i = 0; i < n; i++){
+        if(!visited_count[i]){
             dfs_count(i);
-            if(count>=2)sizeCC.push_back(count); count = 0;
+            if(counter >= 2) sizeCC.push_back(counter); counter = 1;
         }
     }
-    int res = 0;
-    for(int i=0;i<sizeCC.size();i++){
-        printf("%d", sizeCC[i]);
-        res+=combinatorio(sizeCC[i],2);
+    //printf("tamanio CC's: ");
+    //for(int i=0;i<sizeCC.size();i++){printf("%d ", sizeCC[i]);}
+    //printf("\n");
+    double res = 0;
+    for(int i = 0; i < sizeCC.size(); i++){
+        res += combinatorio(sizeCC[i] ,2);
     }
-    double x = (double)res/(double)combinatorio(n,2);
-    return x;
+    return 1- (res/combinatorio(n,2));
 }
 
 
 int main(int argc, const char* argv[]){
-    int n,m,v,w;
-    scanf("%d %d", &n, &m);
-    G.resize(n,vector<tuple<int,int>>());
-    for(int i=0;i<m;i++){
-        scanf("%d %d",&v ,&w);
-        G[v-1].push_back(make_tuple(w-1,0));
-        G[w-1].push_back(make_tuple(v-1,0));
+    long long int n, m, v, w;
+    scanf("%lld %lld", &n, &m);
+    G.resize(n);
+    for(int i = 0; i < m; i++){
+        scanf("%lld %lld",&v ,&w);
+        G[v-1].push_back(w-1);
+        G[w-1].push_back(v-1);
     }
-    vector<int> up(n,0);
-    vector<int> down(n,0);
-    vector<int> bridges(n,-1);
-    A.resize(n+1, vector<int>(n+1, 0));
-    printf("%.5f", juegoParaDos(n,up,down,bridges));
+    tin.resize(n,-1);
+    low.resize(n,-1);
+    bridges.resize(n,-1);
+    A.resize(n+1, vector<double>(3, 0));
+    printf("%.5f", juegoParaDos(n));
 
 }
