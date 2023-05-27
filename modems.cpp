@@ -1,6 +1,5 @@
 #include <iostream>
 #include <bits/stdc++.h>
-#include <vector>
 #include <tuple>
 #include <list>
 #include <iomanip>
@@ -13,53 +12,6 @@ vector<tuple<double, int, int>> listOfEdges;
 list<double> treeEdges;
 vector<tuple<int, int>> offices;
 double count_U, count_V;
-
-void merge(int inicio, int mid, int fin){
-    vector<tuple<double, int, int>> left, right;
-
-    right = vector<tuple<double, int, int>>(mid - inicio + 1);
-    left = vector<tuple<double, int, int>>(fin - mid);
-
-    for(int k = 0; k < left.size(); k++)
-        left[k] = listOfEdges[inicio + k];
-
-    for(int k = 0; k < right.size(); k++)
-        right[k] = listOfEdges[mid + 1 + k];
-
-    int indexLeft = 0, indexRight = 0, indexInicio = inicio;
-    while(indexLeft < fin - mid && indexRight < mid - inicio + 1){
-        if(get<0>(left[indexLeft]) < get<0>(right[indexRight])){
-            listOfEdges[indexInicio] = left[indexLeft];
-            indexLeft++;
-        } else {
-            listOfEdges[indexInicio] = right[indexRight];
-            indexRight++;
-        }
-        indexInicio++;
-    }
-
-    while(indexLeft < fin - mid){
-        listOfEdges[indexInicio] = left[indexLeft];
-        indexLeft++;
-        indexInicio++;
-    }
-
-    while(indexRight < mid - inicio + 1){
-        listOfEdges[indexInicio] = right[indexRight];
-        indexRight++;
-        indexInicio++;
-    }
-}
-
-void mergeSort(int inicio, int fin){
-    if(inicio >= fin)
-        return;
-    
-    int mid = inicio + (fin - inicio)/2;
-    mergeSort(inicio, mid);
-    mergeSort(mid + 1, fin);
-    merge(inicio, mid, fin);
-}
 
 double weight(int i, int j){
     double a = get<0>(offices[i]) - get<0>(offices[j]);
@@ -91,7 +43,7 @@ struct DSU{
         if(u == v) return;
         if(rank[u] < rank[v]) swap(u, v);
         padre[v] = padre[u];
-        rank[u] = max(rank[u],rank[v]+1);
+        rank[u] = max(rank[u], rank[v]+1);
     }
 
     vector<int> padre;
